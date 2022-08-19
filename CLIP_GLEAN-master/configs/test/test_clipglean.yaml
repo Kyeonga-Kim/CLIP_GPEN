@@ -1,0 +1,119 @@
+# general settings
+name: clipglean_v0.3_cliplossonly_8*8
+
+gpus: [0,1,2,3] #[4,5,6,7]
+seed: 310
+
+scale: 16
+# in_size: 8
+# out_size: 1024
+
+epochs: 30
+limit_train_batches: 1.0
+val_check_interval: 0.5
+precision: 32
+num_sanity_val_steps: 2
+log_every_n_steps: 100
+
+tb_log_img_every_n_steps_train: 500
+tb_log_img_every_n_steps_val: 500
+
+# dataset and data loader settings
+# CelebAMask-HQ
+# |---CelebA-HQ-img-16down
+# |---CelebA-caption
+
+data:
+  root_path: /home/dj_kim/dataset/CelebAHQ
+  caption_path: /home/dj_kim/dataset/CelebAHQ/celeba-caption_mw
+  num_workers: 6
+
+  train:
+    name: ClipGlean
+    scale: 16
+    gt_size: 256
+    use_hflip: true
+    use_rot: false
+
+    # data loader
+    use_shuffle: true
+    batch_size_per_gpu: 4 
+    # batch_size: 4
+    pin_memory: true
+    repeat: ~
+  val:
+    name: CelebAHQ
+
+  test:
+    name: ClipGlean
+    scale: 16
+    gt_size: 256
+    use_hflip: true
+    use_rot: false
+
+    # data loader
+    use_shuffle: true
+    
+    batch_size: 1
+    pin_memory: true
+  
+# network structures
+network:
+  type: clipglean
+
+  batch_size: 4 #4
+  freeze_d_epoch: 0
+  log_images: true
+
+  optim_g:
+    type: Adam
+    lr: !!float 1e-4
+    weight_decay: 0
+    betas: [0.9, 0.99]
+
+  optim_d:
+    type: Adam
+    lr: !!float 1e-4
+    weight_decay: 0
+    betas: [0.9, 0.99]
+
+  scheduler:
+    type: CosineAnnealingLR
+    T_max: 30
+    eta_min: !!float 1e-7
+  
+  # TODO give pretrained option to generator
+  # Generator configs
+  generator:
+    in_size: 16
+    out_size: 256
+    pretrained:  
+      ckpt_path: https://download.openmmlab.com/mmgen/stylegan2/stylegan2_c2_ffhq_256_b4x8_20210407_160709-7890ae1f.pth
+      # ckpt_path: http://download.openmmlab.com/mmgen/stylegan2/official_weights/stylegan2-ffhq-config-f-official_20210327_171224-bce9310c.pth #original
+      prefix: generator_ema
+  # Discriminator configs
+  discriminator:
+    in_size: 256
+    pretrained: 
+      ckpt_path: https://download.openmmlab.com/mmgen/stylegan2/stylegan2_c2_ffhq_256_b4x8_20210407_160709-7890ae1f.pth 
+      #ckpt_path: http://download.openmmlab.com/mmgen/stylegan2/official_weights/stylegan2-ffhq-config-f-official_20210327_171224-bce9310c.pth #original
+      prefix: discriminator
+  
+  loss:
+    # mse_weight: 0.0
+    # perceptual_weight: 0.0
+    # style_weight: 0.0
+    # gan_weight: !!float 1e-2
+    # clip_weight: 1.0
+
+    # original
+    mse_weight: 1.0
+    perceptual_weight: !!float 1e-2
+    style_weight: 0.0
+    gan_weight: !!float 1e-2
+    clip_weight: 1.0
+
+  ckpt_path: /data/kka0602/logs/experiments/train/clipglean_v0.4_16x16_to_256x256_Glean/checkpoint/last.ckpt
+
+# TODO implement configs for logger
+logger:

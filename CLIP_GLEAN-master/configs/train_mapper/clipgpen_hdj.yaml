@@ -1,0 +1,139 @@
+# general settings
+name: CLIPGPEN_mapper
+
+gpus: [0]
+seed: 310
+
+scale: 16
+
+epochs: 10
+limit_train_batches: 1.0
+val_check_interval: 500
+precision: 32
+num_sanity_val_steps: 2
+log_every_n_steps: 100
+
+tb_log_img_every_n_steps_train: 500
+tb_log_img_every_n_steps_val: 500
+log_path: #/data/kka0602/log
+
+# dataset and data loader settings
+# CelebAMask-HQ
+# |---CelebA-HQ-img-16down
+# |---CelebA-caption
+
+data:
+  root_path: /root/nas_dataset/CelebAHQ
+  caption_path: /root/nas_dataset/CelebAHQ/celeba-caption_mw
+  num_workers: 4
+
+  fixed_captions: ['Happy'] #['Happy', 'Sad']
+
+  train:
+    name: ClipGpen
+    scale: 16
+    gt_size: 256
+    use_hflip: true
+    use_rot: false
+
+    # data loader
+    use_shuffle: true
+    batch_size_per_gpu: 8
+    pin_memory: true
+    repeat: ~
+
+  test:
+    name: ClipGpen
+    scale: 16
+    gt_size: 256
+    use_hflip: false
+    use_rot: false
+
+    # data loader
+    use_shuffle: true
+    
+    batch_size: 1
+    pin_memory: true
+  
+# network structures
+network:
+  type: clipgpen
+
+  batch_size: 16 #4
+  freeze_d_epoch: 0
+  log_images: true
+
+  optim_g:
+    type: Adam
+    lr: !!float 1e-4
+    weight_decay: 0
+    betas: [0.9, 0.99]
+
+  optim_d:
+    type: Adam
+    lr: !!float 1e-4
+    weight_decay: 0
+    betas: [0.9, 0.99]
+
+  scheduler:
+    type: CosineAnnealingLR
+    T_max: 30
+    eta_min: !!float 1e-7
+  
+  # TODO give pretrained option to generator
+  # Generator configs
+  generator:
+    type: FullGeneratorCLIPMapper
+    args:
+      mapper:
+        image16: ZeroLRMapper #LRMapper
+        latent: ZeroStyleMapper #StyleMapper MultiLevelStyleMapper
+      size: 256
+      channel_multiplier: 1
+      narrow: 0.5
+      pretrained:  
+        ckpt_path: /root/nas_dajinhan/models/GPEN/GPEN-BFR-256.pth
+  
+  # Discriminator configs
+  # discriminator:
+  #   type: GpenDiscriminator
+  #   args:
+  #     in_size: 256
+  #     pretrained: 
+  #       ckpt_path: /root/nas_dajinhan/models/GPEN/GPEN-BFR-256-D.pth
+        
+  discriminator:
+    type: StyleGANv2Discriminator
+    args:
+      in_size: 256
+      pretrained: 
+        ckpt_path: https://download.openmmlab.com/mmgen/stylegan2/stylegan2_c2_ffhq_256_b4x8_20210407_160709-7890ae1f.pth 
+        prefix: discriminator
+
+  # discriminator:
+  #   type: TediGANDiscriminator
+  #   args:
+  #     in_size: 256
+  #     pretrained: 
+  #       ckpt_path: /root/nas_dajinhan/models/TediGAN/stylegan2-ffhq-config-f.pt
+  #       prefix: d
+
+  
+  loss:
+    clip_weight: 1.0
+    lr_cons_weight: 2.0 
+    image_l2_weight: 0 #0.1
+    caption_l2_weight: 0 #0.8
+    id_weight: 0 #0.01
+    id_pretrained_path: /root/nas_dajinhan/models/CLIPGLEAN/model_ir_se50.pth
+    
+    perceptual_weight: 0 #0.001
+    style_weight: 0 #0.001
+
+    gan_weight: 0 # 0.01
+  
+  ckpt_path: ~
+
+
+# TODO implement configs for logger
+logger:
